@@ -13,7 +13,7 @@ def img_load(dir):
     return image_arr
                              
 #img = cv2.imread('images/45bcfb5e-8b25-4d83-9c6b-61fc39b42d63.png', -1)
-classifier = cv2.CascadeClassifier('/home/pi/.local/lib/python3.5/site-packages/cv2/data/haarcascade_frontalface_default.xml')
+#classifier = cv2.CascadeClassifier('/home/pi/.local/lib/python3.5/site-packages/cv2/data/haarcascade_frontalface_default.xml')
 
 img_arr = []
 img_arr = img_load(os.path.join(BASE_DIR,'images'))
@@ -33,11 +33,11 @@ for img in img_arr:
     dim = (width , heigth)
     resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
 
-    faces = classifier.detectMultiScale(resized)
+    """ faces = classifier.detectMultiScale(resized)
 
     for box in faces:
         x,y,w,h = box
-        cv2.rectangle(resized, (x,y),(x+w, y+h), (255,0,0), 2) 
+        cv2.rectangle(resized, (x,y),(x+w, y+h), (255,0,0), 2) """ 
 
     window = 'Test' + str(img.shape[0])
     cv2.imshow(window, resized)
