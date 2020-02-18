@@ -6,12 +6,14 @@ cap = cv2.VideoCapture(0)
 
 classifier = cv2.CascadeClassifier('haarcascade/haarcascade_frontalface_alt2.xml')
 
-def read_person_activity(x,y,w,h):
+def store_detected_frame(x,y,w,h):
     print('it is working')
     return
 
 face_rect_sum = 0
-false_detection_threshold = 50
+FALSE_DETECTION_THRESHOLD = 50
+ITRATION_THRESHOLD = 3
+false_iteration = 0
 while(True):
     ret, frame = cap.read()
     face_detected = False
@@ -27,12 +29,28 @@ while(True):
         print('curr = ',curr_sum,'face_sum = ',face_rect_sum,'diff = ',face_rect_sum - curr_sum)
         if face_rect_sum == 0:
             face_rect_sum = curr_sum
-        elif abs(face_rect_sum - curr_sum) < false_detection_threshold:
+            false_iteration = 0
+            print('start detecting frames')
+        elif abs(face_rect_sum - curr_sum) < FALSE_DETECTION_THRESHOLD:
             face_rect_sum = curr_sum
+            false_iteration = 0
+            #start storring images to buffer
+            print('store this frame to buffer')
         else:
             print('False Detection ')
+            false_iteration += 1
+            if false_iteration >= ITRATION_THRESHOLD:
+                print('reset buffer, and start fresh')
+                face_rect_sum = 0
+                #remove previous images and start fresh
+
+    if(face_detected == False):
+        false_iteration += 1
+        if false_iteration >= ITRATION_THRESHOLD :
             face_rect_sum = 0
-            
+            print('reset buffer, and start fresh due to false detection')
+            #remove previous images and start fresh
+                
 
     print(face_detected, face_rect_sum)
 
