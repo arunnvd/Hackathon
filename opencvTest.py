@@ -3,6 +3,7 @@ import cv2
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+test
 def img_load(dir):
     image_arr = []
     for file in os.listdir(dir):
