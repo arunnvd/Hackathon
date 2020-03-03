@@ -1,26 +1,36 @@
-import cv2
-import numpy as np
 import os
+import cv2
 
 
-cap = cv2.VideoCapture(0)
+
+cap = cv2.VideoCapture(1)
 classifier = cv2.CascadeClassifier('haarcascade/haarcascade_frontalface_alt2.xml')
 
-face_rect_sum = 0
+
 FALSE_DETECTION_THRESHOLD = 50
 NEEDED_FRAMES = 20
-ITRATION_THRESHOLD = 3
+ITRATION_THRESHOLD = 15
+FRAME_CAPTURE_INTERVAL = 100 #duration between frames to be captured in msec
+
+face_rect_sum = 0
 false_iteration = 0
 image_buff = []
-person_id = 0
+person_id = 1
+iteration_count = 0
 
 def clean_image_buff():
+    global iteration_count
     image_buff.clear()
-    print('clean buff', image_buff)
+    iteration_count = 0
+    #print('clean buff', image_buff)
 
 def store_detected_framebuffer(roi):
+    global iteration_count
     print('Saving --> ',roi.shape, ' -- ',len(image_buff))
-    image_buff.append(roi)
+    if(iteration_count % 5 == 0) : 
+        print('saving this frame -- count ',iteration_count)
+        image_buff.append(roi)
+    iteration_count += 1
     return
 
 def save_person():
@@ -43,7 +53,7 @@ while(True):
     face_detected = False
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = classifier.detectMultiScale(gray,scaleFactor=1.6, minNeighbors=6)
+    faces = classifier.detectMultiScale(gray,scaleFactor=1.4, minNeighbors=3)
 
     for (x,y,w,h) in faces:
         face_detected = True
@@ -59,12 +69,16 @@ while(True):
             face_rect_sum = curr_sum
             false_iteration = 0
             #start storring images to buffer
-            store_detected_framebuffer(gray[y:y+h, x:x+w])
+            if(len(image_buff) < NEEDED_FRAMES):
+                store_detected_framebuffer(gray[y:y+h, x:x+w])
             #print('store this frame to buffer')
         else:
             #print('False Detection ')
             false_iteration += 1
             if false_iteration >= ITRATION_THRESHOLD:
+                #save buffer if buffered more than NEEDED_FRAMES
+                if(len(image_buff) >= NEEDED_FRAMES):
+                    save_person()
                 print('reset buffer, and start fresh')
                 face_rect_sum = 0
                 #remove previous images and start fresh
@@ -91,8 +105,8 @@ while(True):
 
 
 
-    key = cv2.waitKey(500)
-    if key ==32:
+    key = cv2.waitKey(FRAME_CAPTURE_INTERVAL)
+    if key == 32:
         break
 
 cap.release()
