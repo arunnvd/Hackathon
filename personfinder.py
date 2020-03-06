@@ -1,21 +1,23 @@
 import cv2
 import face_recognition
 import numpy as np
+#from sklearn import svm
+
 
 video = cv2.VideoCapture(0)
-arun = face_recognition.load_image_file("detected_faces/personId_0/frame_0.jpg")
-arun_encoding = face_recognition.face_encodings(arun)[0]
+person1 = face_recognition.load_image_file("detected_faces/personId_3/bharath.jpg")
+person1_encoding = face_recognition.face_encodings(person1)[0]
 
-lakshmi = face_recognition.load_image_file("detected_faces/personId_3/frame_29.jpg")
-lakshmi_encoding = face_recognition.face_encodings(lakshmi)[0]
+person2 = face_recognition.load_image_file("detected_faces/personId_2/frame_2.jpg")
+person2_encoding = face_recognition.face_encodings(person2)[0]
 
 known_face_encodings = [
-    arun_encoding,
-    lakshmi_encoding
+    person1_encoding,
+    person2_encoding
 ]
 known_face_names = [
-    "Arun",
-    "Lakshmi"
+    "Bharath",
+    "Arun"
 ]
 
 while True:
@@ -25,13 +27,17 @@ while True:
     face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
     for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-        matches = face_recognition.compare_faces(known_face_encodings,face_encoding)
+        matches = face_recognition.compare_faces(known_face_encodings,face_encoding,tolerance=0.43)
+        print(matches)
 
         name = "Unknown"
 
         face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
 
+        print(face_distances)
+
         best_match_index = np.argmin(face_distances)
+
         if matches[best_match_index]:
             name = known_face_names[best_match_index]
         
