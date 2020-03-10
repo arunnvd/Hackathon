@@ -1,9 +1,10 @@
 import os
 import cv2
+import shutil
 
 
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 classifier = cv2.CascadeClassifier('haarcascade/haarcascade_frontalface_alt2.xml')
 
 
@@ -44,6 +45,14 @@ def save_person():
         frame_name = frame_dir +'/frame_' + str(i) + '.jpg'
         cv2.imwrite(frame_name,roi)
     
+    #check files saved successfully
+    #if success zip the folder
+    if(len(os.listdir(frame_dir)) >= NEEDED_FRAMES):
+        print('---------ziping folder---------')
+        #zipdir = frame_dir + 'ziped'
+        shutil.make_archive(frame_dir,'zip',frame_dir)
+
+
     #clean image buffer, increment person id
     clean_image_buff()
     person_id += 1
