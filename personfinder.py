@@ -15,6 +15,7 @@ person_id = []
 clf = svm.SVC(gamma = 'scale')
 face_train_run_once = False
 
+
 stop_thread = False
 
 
@@ -30,31 +31,27 @@ def face_train():
 
     TRAIN_MUTEX = True
 
-    if(len(train_dir) < 2):
+    if(len(train_dir) < 2 or face_train_run_once == True):
         print("Not enough samples available.... come back later")
+        if(stop_thread == False):
+            threading.Timer(60, face_train).start()
         return
 
     for person in train_dir:
         sample_pix = os.listdir(SAMPLES_PATH + person)
-        do_not_process = False
 
         # search for skip file in dir 
         # to avoid processing same dir again
-        for file_name in sample_pix:
-            if(file_name == SKIP_DIR):
-                do_not_process = True
-                break
+        if person in person_id:
+            print("Already processed dir, skiping dir ==> ",person)
+            continue
 
-        if(do_not_process == False):
-            for samples in sample_pix:
-                face = face_recognition.load_image_file(SAMPLES_PATH + person + '/' + samples)
-
-                face_enc = face_recognition.face_encodings(face)[0]
-                encodings.append(face_enc)
-                person_id.append(person)
-
-                # create .skip_dir file to indicate folder processed already
-                f = open(SAMPLES_PATH + person + '/' + SKIP_DIR, "w")
+      
+        for samples in sample_pix:
+            face = face_recognition.load_image_file(SAMPLES_PATH + person + '/' + samples)
+            face_enc = face_recognition.face_encodings(face)[0]
+            encodings.append(face_enc)
+            person_id.append(person)
     
     clf.fit(encodings, person_id)
     face_train_run_once = True
@@ -71,12 +68,12 @@ def face_detect(rgb_frame):
     if((TRAIN_MUTEX == False) and (face_train_run_once == True)):
         test_face_locations = face_recognition.face_locations(rgb_frame)
         num_faces = len(test_face_locations)
-        for i in range(num_faces):
-            test_face_encodings = face_recognition.face_encodings(rgb_frame, test_face_locations)[i]
+        if(num_faces == 1):
+            test_face_encodings = face_recognition.face_encodings(rgb_frame, test_face_locations)[0]
             name = clf.predict([test_face_encodings])
-        print("----------Found---------------")
-        print(name)
-        print("----------Found-end--------------")
+            print("Idententified person ==> ",name)
+        else:
+            print("More than 1 face detected, skiping this frame")
     
     else:
         print("Trainer is busy, skiping this frame")
