@@ -8,10 +8,12 @@ import threading
 
 
 SAMPLES_PATH = 'detected_faces/'
+SKIP_DIR = '.skip_dir'
 TRAIN_MUTEX = False
 encodings = []
 person_id = []
 clf = svm.SVC(gamma = 'scale')
+face_train_run_once = False
 
 stop_thread = False
 
@@ -22,6 +24,7 @@ def face_train():
     global encodings
     global person_id
     global TRAIN_MUTEX
+    global face_train_run_once
     train_dir = os.listdir(SAMPLES_PATH)
     print("Training Images, Please wait")
 
@@ -38,7 +41,7 @@ def face_train():
         # search for skip file in dir 
         # to avoid processing same dir again
         for file_name in sample_pix:
-            if(file_name == '.skip_dir'):
+            if(file_name == SKIP_DIR):
                 do_not_process = True
                 break
 
@@ -51,9 +54,10 @@ def face_train():
                 person_id.append(person)
 
                 # create .skip_dir file to indicate folder processed already
-                f = open(SAMPLES_PATH + person + '/' + ".skip_dir", "w")
+                f = open(SAMPLES_PATH + person + '/' + SKIP_DIR, "w")
     
     clf.fit(encodings, person_id)
+    face_train_run_once = True
     if(stop_thread == False):
         threading.Timer(60, face_train).start()
     TRAIN_MUTEX = False
@@ -63,7 +67,8 @@ def face_train():
 
 def face_detect(rgb_frame):
     name = ''
-    if(TRAIN_MUTEX == False):
+    # run comparison only after face train classifier is ready
+    if((TRAIN_MUTEX == False) and (face_train_run_once == True)):
         test_face_locations = face_recognition.face_locations(rgb_frame)
         num_faces = len(test_face_locations)
         for i in range(num_faces):
@@ -91,6 +96,7 @@ while True:
     if (not detected_id):
         print("Nothing found")
     else:
+        # Test code only - not required in actual implementation
         face_locations = face_recognition.face_locations(rgb_frame)
 
         for (top, right, bottom, left) in face_locations:
