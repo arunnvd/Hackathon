@@ -2,24 +2,47 @@ import cv2
 import face_recognition
 import numpy as np
 from sklearn import svm
-import os
+import os, signal
 import time
 import threading
+import flask
+from flask import jsonify, request
+import keyboard
 
 
 SAMPLES_PATH = 'detected_faces/'
-SKIP_DIR = '.skip_dir'
 TRAIN_MUTEX = False
 encodings = []
 person_id = []
 clf = svm.SVC(gamma = 'scale')
 face_train_run_once = False
 
+stub_cam_array = [['cam1','cam2'], ['cam1'],['cam2']]
+
 
 stop_thread = False
 
 
-video = cv2.VideoCapture(0)
+
+
+def serverHandle():
+    app = flask.Flask(__name__)
+    app.config["DEBUG"] = False
+
+    @app.route('/terminate', methods=['GET'])
+    def terminate():
+        print("================TERMINATE=====================")
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    @app.route('/userlogin', methods=['GET'])
+    def home():
+        index = user_logged_in()
+        if(index >= 0):
+            return jsonify(stub_cam_array[index])
+        else:
+            return jsonify('display_all')
+    app.run()
+
 
 def face_train():
     global encodings
@@ -31,11 +54,11 @@ def face_train():
 
     TRAIN_MUTEX = True
 
-    if(len(train_dir) < 2 or face_train_run_once == True):
+    if(len(train_dir) < 2 and face_train_run_once == False):
         print("Not enough samples available.... come back later")
         if(stop_thread == False):
             threading.Timer(60, face_train).start()
-        return
+        return False
 
     for person in train_dir:
         sample_pix = os.listdir(SAMPLES_PATH + person)
@@ -46,12 +69,22 @@ def face_train():
             print("Already processed dir, skiping dir ==> ",person)
             continue
 
+        processed_pic_count = 0
+
       
         for samples in sample_pix:
             face = face_recognition.load_image_file(SAMPLES_PATH + person + '/' + samples)
-            face_enc = face_recognition.face_encodings(face)[0]
-            encodings.append(face_enc)
-            person_id.append(person)
+            face_locations = face_recognition.face_locations(face)
+            if(len(face_locations) == 1):
+                face_enc = face_recognition.face_encodings(face)[0]
+                encodings.append(face_enc)
+                person_id.append(person)
+                processed_pic_count += 1
+        if(processed_pic_count == 0):
+            #Not processed any images in this folder
+            #ignore this entry
+            print("not processed images in this folder ==> ",person)
+            #return False
     
     clf.fit(encodings, person_id)
     face_train_run_once = True
@@ -59,7 +92,7 @@ def face_train():
         threading.Timer(60, face_train).start()
     TRAIN_MUTEX = False
     print("Face training completed")
-    return
+    return True
 
 
 def face_detect(rgb_frame):
@@ -73,7 +106,7 @@ def face_detect(rgb_frame):
             name = clf.predict([test_face_encodings])
             print("Idententified person ==> ",name)
         else:
-            print("More than 1 face detected, skiping this frame")
+            print("More than 1 face or no face detected, skiping this frame")
     
     else:
         print("Trainer is busy, skiping this frame")
@@ -83,31 +116,44 @@ def face_detect(rgb_frame):
 # Trigger Face_train method to create classifier with sample pics
 # this method will run once in every min after that
 face_train()
+threading.Timer(2, serverHandle).start()
 
-while True:
-    ret, frame = video.read()
-    rgb_frame = frame[:, :, ::-1]
+def user_logged_in():
+    run_count = 0
+    video = cv2.VideoCapture(0)
+    while True:
+        ret, frame = video.read()
+        rgb_frame = frame[:, :, ::-1]
+        person_detected = False
+        run_count +=1
 
-    detected_id = face_detect(rgb_frame)
-
-    if (not detected_id):
-        print("Nothing found")
-    else:
-        # Test code only - not required in actual implementation
         face_locations = face_recognition.face_locations(rgb_frame)
+        if(len(face_locations) == 1):
+            detected_id = face_detect(rgb_frame)
 
-        for (top, right, bottom, left) in face_locations:
+            if (not detected_id):
+                print("Nothing found")
+            else:
+                person_detected = True
+                try:
+                    person_index = int(detected_id)
+                except:
+                    print("this is wrong name",detected_id)
+                else:
+                    print("person associated with cams ")
+                    for camid in stub_cam_array[person_index]:
+                        print(camid)
+                    print("==============================")
+                    video.release()
+                    return person_index
+        if(run_count >= 50):
+            video.release()
+            return -1
 
-            cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-            cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
-            cv2.putText(frame, detected_id[0], (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
-    
-    cv2.imshow('Video', frame)
 
-    key = cv2.waitKey(500)
-    if key == 32:
-        break
+#while True:
+keyboard.wait('esc')
+
+print("================TERMINATE=====================")
 stop_thread = True
-video.release()
 cv2.destroyAllWindows()
