@@ -17,7 +17,7 @@ person_id = []
 clf = svm.SVC(gamma = 'scale')
 face_train_run_once = False
 
-stub_cam_array = [['cam1','cam2'], ['cam1'],['cam2']]
+stub_cam_array = [['cam1','cam2'], ['cam1'],['cam2'],['cam1'],['cam2','cam1'],['cam1','cam2'],['cam2']]
 
 
 stop_thread = False
@@ -36,6 +36,9 @@ def serverHandle():
 
     @app.route('/userlogin', methods=['GET'])
     def home():
+        if (TRAIN_MUTEX == True):
+            # Trainer is busy, try again later
+            return jsonify('Try_later')
         index = user_logged_in()
         if(index >= 0):
             return jsonify(stub_cam_array[index])
